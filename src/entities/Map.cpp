@@ -123,7 +123,7 @@ void Map::set_full_screen_camera(Camera& camera)
 	camera.center = glm::vec2(world_width / 2.0f, world_height / 2.0f);
 	f32 map_aspect_ratio = world_width / world_height;
 	if (map_aspect_ratio < camera.aspect_ratio)
-		camera.set_v_scope(world_height);
+		camera.set_vertical_scope(world_height);
 	else
 		camera.h_scope = world_width;
 	camera.update_matrix();
@@ -172,7 +172,7 @@ void Map::create_map_physics(entt::registry& registry, entt::entity entity, Tile
 	Map& map = registry.get<Map>(entity);
 	Physics& physics = registry.emplace<Physics>(entity, false);
 
-	static const f32 HALF_BORDER_WIDTH = 0.1f;
+	static const f32 HALF_BORDER_WIDTH = 0.2f;
 
 	f32 half_width = map.world_width * 0.5f;
 	f32 half_height = map.world_height * 0.5f;

@@ -121,11 +121,6 @@ void Texture::bind_to_tex_unit(u32 unit) const
 	glBindTexture(GL_TEXTURE_2D, id);
 }
 
-TextureRef Texture::get_ref() const
-{
-	return TextureRef{ id };
-}
-
 u32 Texture::get_width() const
 {
 	return width;
@@ -134,10 +129,4 @@ u32 Texture::get_width() const
 u32 Texture::get_height() const
 {
 	return height;
-}
-
-void TextureRef::bind_to_tex_unit(u32 unit) const
-{
-	glActiveTexture(GL_TEXTURE0 + unit);
-	glBindTexture(GL_TEXTURE_2D, id);
 }

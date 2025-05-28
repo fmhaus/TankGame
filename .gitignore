@@ -1,0 +1,5 @@
+# Ignore the .vs folder (used by Visual Studio)
+.vs/
+
+# Ignore the out/ folder
+out/

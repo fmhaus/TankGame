@@ -20,8 +20,14 @@ struct Physics
 	b2BodyId body;
 
 	friend struct World;
+	
+	static entt::entity get_entity(b2BodyId body);
+	static bool is_in_contact(entt::registry&, entt::entity e1, entt::entity e2);
+
 private:
 	static void update_components(entt::registry& registry);
+	static void on_create_physics(entt::registry& registry, b2WorldId world, entt::entity entity);
+	static void on_destroy_physics(entt::registry& registry, entt::entity entity);
 };
 
 /// Stores position and rotation

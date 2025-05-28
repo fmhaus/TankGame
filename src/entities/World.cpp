@@ -14,6 +14,9 @@ World::World()
 
 	registry.on_construct<Physics>().connect<&World::on_create_physics>(*this);
 	registry.on_destroy<Physics>().connect<&World::on_destroy_physics>(*this);
+
+	this->add_collision_listener<Projectile>(Projectile::on_collision_begin, CollisionListenerType::OnContactBegin);
+	this->add_collision_listener<Projectile>(Projectile::on_collision_end, CollisionListenerType::OnContactEnd);
 }
 
 World::~World()
@@ -25,11 +28,45 @@ World::~World()
 void World::update(f32 delta_time)
 {
 	b2World_Step(physics_world, delta_time, 4);
+
+	b2ContactEvents events = b2World_GetContactEvents(physics_world);
+
+	for (u32 i = 0; i < events.beginCount; i++)
+	{
+		entt::entity e1 = Physics::get_entity(b2Shape_GetBody(events.beginEvents[i].shapeIdA));
+		entt::entity e2 = Physics::get_entity(b2Shape_GetBody(events.beginEvents[i].shapeIdB));
+
+		for (CollisionListener& listener : this->collision_listeners_begin)
+		{
+			if (listener.has_component(registry, e1))
+				listener.callback(registry, e1, e2);
+			if (listener.has_component(registry, e2))
+				listener.callback(registry, e2, e1);
+		}
+	}
+
+	for (u32 i = 0; i < events.endCount; i++)
+	{
+		// Removed entities in contact still create end events. Make sure the shapes are still valid
+		if (!b2Shape_IsValid(events.endEvents[i].shapeIdA) || !b2Shape_IsValid(events.endEvents[i].shapeIdB))
+			continue;
+
+		entt::entity e1 = Physics::get_entity(b2Shape_GetBody(events.endEvents[i].shapeIdA));
+		entt::entity e2 = Physics::get_entity(b2Shape_GetBody(events.endEvents[i].shapeIdB));
+
+		for (CollisionListener& listener : this->collision_listeners_end)
+		{
+			if (listener.has_component(registry, e1))
+				listener.callback(registry, e1, e2);
+			if (listener.has_component(registry, e2))
+				listener.callback(registry, e2, e1);
+		}
+	}
+
 	Physics::update_components(registry);
-
 	Projectile::update_projectiles(registry);
-
 	TankRenderable::update_track_animation(registry, delta_time);
+	Particle::update_animations(registry, delta_time);
 }
 
 void World::render(Graphics& graphics)
@@ -37,19 +74,15 @@ void World::render(Graphics& graphics)
 	MapRenderable::render_map(registry, graphics);
 	TankRenderable::render_tanks(registry, graphics);
 	ProjectileRenderable::render_projectiles(registry, graphics);
-}
+	Particle::render_particles(registry, graphics);
 
-void World::draw_physics_debug(Graphics& graphics)
-{
 	if (physics_debug_draw)
 	{
 		Rect camera_box = graphics.camera.get_bounding_rect();
-		/*
 		physics_debug_draw->drawingBounds = b2AABB(
 			b2Vec2(camera_box.x, camera_box.y),
 			b2Vec2(camera_box.x + camera_box.width, camera_box.y + camera_box.height)
 		);
-		*/
 		physics_debug_draw->context = (void*)&graphics;
 
 		b2World_Draw(physics_world, physics_debug_draw.get());
@@ -63,7 +96,7 @@ Color color_from_b2_hex(b2HexColor color)
 	f32 b = (color & 0xFF) / 255.0f;
 	return { r, g, b, 1.0f };
 }
-#include <iostream>
+
 void World::set_physics_debug_draw_enabled(bool enabled)
 {
 	if ((physics_debug_draw.get() != nullptr) == enabled)
@@ -128,34 +161,24 @@ void World::set_physics_debug_draw_enabled(bool enabled)
 	}
 }
 
-void World::on_create_physics(entt::registry& registry, entt::entity entity)
+static u32 listener_id_counter = 1;
+
+CollisionListenerID World::next_listener_ID(CollisionListenerType type)
 {
-	Physics& physics = registry.get<Physics>(entity);
-
-	b2BodyDef body_def = b2DefaultBodyDef();
-	body_def.type = physics.dynamic ? b2_dynamicBody : b2_staticBody;
-
-	if (registry.all_of<Transform>(entity))
-	{
-		Transform& transform = registry.get<Transform>(entity);
-		body_def.position = b2Vec2(transform.pos.x, transform.pos.y);
-		body_def.rotation = b2MakeRot(transform.rot);
-	}
-	if (registry.all_of<Velocity>(entity))
-	{
-		Velocity& movement = registry.get<Velocity>(entity);
-		body_def.linearVelocity = b2Vec2(movement.linear.x, movement.linear.y);
-		body_def.angularVelocity = movement.angular;
-	}
-
-	physics.body = b2CreateBody(physics_world, &body_def);
+	return { ((listener_id_counter++) << 1) | static_cast<u32>(type) };
 }
 
+void World::on_create_physics(entt::registry& registry, entt::entity entity)
+{
+	Physics::on_create_physics(registry, physics_world, entity);
+}
 
 void World::on_destroy_physics(entt::registry& registry, entt::entity entity)
 {
-	Physics& physics = registry.get<Physics>(entity);
+	Physics::on_destroy_physics(registry, entity);
+}
 
-	b2DestroyBody(physics.body);
-	physics.body = b2_nullBodyId;
+CollisionListenerType CollisionListenerID::get_type()
+{
+	return static_cast<CollisionListenerType>(value & 1);
 }

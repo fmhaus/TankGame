@@ -8,6 +8,7 @@
 #include "entities/Components.h"
 #include "entities/Map.h"
 #include "entities/Projectile.h"
+#include "entities/Particle.h"
 #include "AssetManager.h"
 
 #include <iostream>
@@ -113,6 +114,11 @@ void open_client()
     TextMesh text(asset_manager.font_sans_black);
     set_text(text, design);
 
+
+    ProjectileType projectile_type;
+    projectile_type.sprite_type = ProjectileSpriteType::HeavyShell;
+    projectile_type.max_collisons = 0;
+
     while (!window.poll_events())
     {
         //player_control_camera(window, camera);
@@ -123,7 +129,9 @@ void open_client()
         if (shoot.is_released(window))
         {
             auto [tank_transform, controller] = world.registry.get<Transform,TankPlayerController>(tank);
-            Projectile::create_projectile(world.registry, asset_manager, world.registry.get<Tank>(tank), ProjectileType::HeavyShell, 10.0f);
+            Projectile::create_projectile(world.registry, asset_manager, world.registry.get<Tank>(tank), projectile_type, 10.0f);
+
+            Particle::create(world.registry, asset_manager.particle_explosion[0], world.registry.get<Transform>(tank), 10.0f);
         }
 
         if (next_color.is_released(window))
@@ -192,7 +200,6 @@ void open_client()
         world.update((f32)window.get_last_frame_time());
 
         world.render(graphics);
-        world.draw_physics_debug(graphics);
 
         TextStyleSettings settings;
         settings.thickness = 0.495f;

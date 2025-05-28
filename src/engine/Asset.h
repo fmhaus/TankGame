@@ -84,6 +84,7 @@ private:
 
 /// Stores the asset location with a loader function and counts references to it
 /// The asset is unloaded if all AssetRef instances are destroyed
+/// Also this struct is really chunky (120 bytes) and can still be optimized a lot
 template<typename T>
 struct Asset : NoCopy
 {
