@@ -5,6 +5,7 @@
 #include "Tank.h"
 #include "Map.h"
 #include "Projectile.h"
+#include "Particle.h"
 
 World::World()
 {
@@ -15,8 +16,8 @@ World::World()
 	registry.on_construct<Physics>().connect<&World::on_create_physics>(*this);
 	registry.on_destroy<Physics>().connect<&World::on_destroy_physics>(*this);
 
-	this->add_collision_listener<Projectile>(Projectile::on_collision_begin, CollisionListenerType::OnContactBegin);
-	this->add_collision_listener<Projectile>(Projectile::on_collision_end, CollisionListenerType::OnContactEnd);
+	this->add_begin_contact_listener<Projectile>(Projectile::on_collision_begin);
+	this->add_end_contact_listener<Projectile>(Projectile::on_collision_end);
 }
 
 World::~World()
@@ -35,13 +36,26 @@ void World::update(f32 delta_time)
 	{
 		entt::entity e1 = Physics::get_entity(b2Shape_GetBody(events.beginEvents[i].shapeIdA));
 		entt::entity e2 = Physics::get_entity(b2Shape_GetBody(events.beginEvents[i].shapeIdB));
+		b2Manifold& manifold = events.beginEvents[i].manifold;
 
-		for (CollisionListener& listener : this->collision_listeners_begin)
+		glm::vec2 pos(0);
+		for (u32 i = 0; i < manifold.pointCount; i++)
+		{
+			pos += glm::vec2(manifold.points[i].point.x, manifold.points[i].point.y);
+		}
+		pos *= (1.0f / (f32)manifold.pointCount);
+		glm::vec2 normal(manifold.normal.x, manifold.normal.y);
+
+		for (auto& listener : this->begin_contact_listeners)
 		{
 			if (listener.has_component(registry, e1))
-				listener.callback(registry, e1, e2);
+			{
+				listener.callback(registry, e1, e2, pos, normal);
+			}
 			if (listener.has_component(registry, e2))
-				listener.callback(registry, e2, e1);
+			{
+				listener.callback(registry, e2, e1, pos, normal);
+			}
 		}
 	}
 
@@ -54,12 +68,16 @@ void World::update(f32 delta_time)
 		entt::entity e1 = Physics::get_entity(b2Shape_GetBody(events.endEvents[i].shapeIdA));
 		entt::entity e2 = Physics::get_entity(b2Shape_GetBody(events.endEvents[i].shapeIdB));
 
-		for (CollisionListener& listener : this->collision_listeners_end)
+		for (auto& listener : this->end_contact_listeners)
 		{
 			if (listener.has_component(registry, e1))
+			{
 				listener.callback(registry, e1, e2);
+			}
 			if (listener.has_component(registry, e2))
+			{
 				listener.callback(registry, e2, e1);
+			}
 		}
 	}
 

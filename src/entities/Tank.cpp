@@ -3,6 +3,7 @@
 #include "World.h"
 #include "Components.h"
 #include "Projectile.h"
+#include "Particle.h"
 #include "AssetManager.h"
 #include "engine/util/MathUtil.h"
 #include "engine/util/StringUtil.h"
@@ -67,48 +68,12 @@ void TurretData::load_from_file(std::unique_ptr<TurretData>& data_ptr, const cha
 	}
 }
 
-void load_texture(std::unique_ptr<Texture>& data_ptr, const std::string& location)
-{
-	data_ptr = std::make_unique<Texture>(location.c_str());
-}
-
-TankAssets::TankAssets(u32 pixel_scale)
-{
-	for (u32 var1 = 0; var1 < 4; var1++)
-	{
-		for (u32 var2 = 0; var2 < 8; var2++)
-		{
-			hull_textures[var1][var2].set(std::string(RESOURCES_PATH "images/tank/hulls_") + std::to_string(var1 + 1) + "/Hull_0" + std::to_string(var2 + 1) + ".png", load_texture);
-			turret_textures[var1][var2].set(std::string(RESOURCES_PATH "images/tank/guns_") + std::to_string(var1 + 1) + "/Gun_0" + std::to_string(var2 + 1) + ".png", load_texture);
-		}
-		for (u32 var2 = 0; var2 < 2; var2++)
-		{
-			static const char* var2_str[2] = { "A", "B" };
-			track_textures[var1][var2].set(std::string(RESOURCES_PATH "images/tank/tracks/Track_") + std::to_string(var1 + 1) + "_" + var2_str[var2] + ".png", load_texture);
-		}
-	}
-
-	for (u32 i = 0; i < 8; i++)
-	{
-
-		hull_data[i].set(std::string(RESOURCES_PATH "images/tank/hulls_data/Hull_0") + std::to_string(i + 1) + ".txt", [=](auto& data_ptr, const auto& location)
-			{
-				HullData::load_from_file(data_ptr, location.c_str(), pixel_scale);
-			});
-
-		turret_data[i].set(std::string(RESOURCES_PATH "images/tank/guns_data/Gun_0") + std::to_string(i + 1) + ".txt", [=](auto& data_ptr, const auto& location)
-			{
-				TurretData::load_from_file(data_ptr, location.c_str(), pixel_scale);
-			});
-	}
-}
-
 static u32 id_generator = 1;
 
-Tank::Tank(u32 id, entt::entity entity, const TankDesign& design, TankAssets& assets)
+Tank::Tank(u32 id, entt::entity entity, const TankDesign& design)
 	: id(id), entity(entity), design(design), turret_orientation(0.0f), shoot_barrel_index(0),
-	hull_data(assets.hull_data[design.hull].loaded()),
-	turret_data(assets.turret_data[design.turret].loaded())
+	hull_data(AssetManager::get_instance().hull_data[design.hull].loaded()),
+	turret_data(AssetManager::get_instance().turret_data[design.turret].loaded())
 {
 
 }
@@ -127,13 +92,26 @@ glm::vec2 Tank::get_shoot_point(entt::registry& registry)
 	return shoot_point;
 }
 
-entt::entity Tank::create_tank(entt::registry& registry, TankAssets& assets, const TankDesign& design, glm::vec2 pos, bool player_control)
+entt::entity Tank::shoot_projectile(entt::registry& registry, const ProjectileType& type)
+{
+	glm::vec2 shoot_point = get_shoot_point(registry);
+	entt::entity projectile = Projectile::create_projectile(registry, entity, type, shoot_point, turret_orientation);
+	if (registry.all_of<TankRenderable>(entity))
+	{
+		Projectile::create_projectile_renderable(registry, projectile, type);
+
+		Particle::create(registry, AssetManager::get_instance().particle_flash[type.particle_type], { shoot_point, turret_orientation }, 10.0f, 0.5f);
+	}
+	return entity;
+}
+
+entt::entity Tank::create_tank(entt::registry& registry, const TankDesign& design, glm::vec2 pos, bool player_control)
 {
 	entt::entity entity = registry.create();
-	registry.emplace<Tank>(entity, id_generator++, entity, design, assets);
+	registry.emplace<Tank>(entity, id_generator++, entity, design);
 	registry.emplace<Transform>(entity, pos, 0.0f);
 	registry.emplace<Velocity>(entity);
-	registry.emplace<TankRenderable>(entity, assets, design);
+	registry.emplace<TankRenderable>(entity, design);
 	b2ShapeDef shape_def = b2DefaultShapeDef();
 	shape_def.density = 868.0;
 	shape_def.material.friction = 0.3f;
@@ -144,7 +122,7 @@ entt::entity Tank::create_tank(entt::registry& registry, TankAssets& assets, con
 	return entity;
 }
 
-void Tank::update_tank_design(entt::registry& registry, entt::entity tank_entity, const TankDesign& new_design, TankAssets& assets)
+void Tank::update_tank_design(entt::registry& registry, entt::entity tank_entity, const TankDesign& new_design)
 {
 	Tank& tank = registry.get<Tank>(tank_entity);
 	TankRenderable* renderable = nullptr;
@@ -161,13 +139,13 @@ void Tank::update_tank_design(entt::registry& registry, entt::entity tank_entity
 
 	if (tank.design.hull != new_design.hull)
 	{
-		tank.hull_data = assets.hull_data[new_design.hull].loaded();
+		tank.hull_data = AssetManager::get_instance().hull_data[new_design.hull].loaded();
 		load_hull_texture = true;
 	}
 
 	if (tank.design.turret != new_design.turret)
 	{
-		tank.turret_data = assets.turret_data[new_design.turret].loaded();
+		tank.turret_data = AssetManager::get_instance().turret_data[new_design.turret].loaded();
 		load_turret_texture = true;
 	}
 
@@ -178,13 +156,13 @@ void Tank::update_tank_design(entt::registry& registry, entt::entity tank_entity
 	{
 		TankRenderable& renderable = registry.get<TankRenderable>(tank_entity);
 		if (load_hull_texture)
-			renderable.hull_texture = assets.hull_textures[new_design.color][new_design.hull].loaded();
+			renderable.hull_texture = AssetManager::get_instance().hull_textures[new_design.color][new_design.hull].loaded();
 		if (load_turret_texture)
-			renderable.turret_texture = assets.turret_textures[new_design.color][new_design.turret].loaded();
+			renderable.turret_texture = AssetManager::get_instance().turret_textures[new_design.color][new_design.turret].loaded();
 		if (load_track_texture)
 		{
-			renderable.track_textures[0] = assets.track_textures[new_design.tracks][0].loaded();
-			renderable.track_textures[1] = assets.track_textures[new_design.tracks][1].loaded();
+			renderable.track_textures[0] = AssetManager::get_instance().track_textures[new_design.tracks][0].loaded();
+			renderable.track_textures[1] = AssetManager::get_instance().track_textures[new_design.tracks][1].loaded();
 		}
 	}
 
@@ -197,10 +175,10 @@ f32 Tank::get_scale()
 	return TANK_SCALE;
 }
 
-TankRenderable::TankRenderable(TankAssets& assets, const TankDesign& design)
-	: hull_texture(assets.hull_textures[design.color][design.hull].loaded()),
-	turret_texture(assets.turret_textures[design.color][design.turret].loaded()),
-	track_textures{ assets.track_textures[design.tracks][0].loaded(), assets.track_textures[design.tracks][1].loaded() },
+TankRenderable::TankRenderable(const TankDesign& design)
+	: hull_texture(AssetManager::get_instance().hull_textures[design.color][design.hull].loaded()),
+	turret_texture(AssetManager::get_instance().turret_textures[design.color][design.turret].loaded()),
+	track_textures{ AssetManager::get_instance().track_textures[design.tracks][0].loaded(), AssetManager::get_instance().track_textures[design.tracks][1].loaded() },
 	turret_rotation(0.0),
 	track_animation_1(0.0),
 	track_animation_2(0.0)

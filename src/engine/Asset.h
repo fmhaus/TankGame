@@ -11,8 +11,8 @@
 template<typename T>
 struct Asset;
 
-/// !!! All AssetRefs need to be destructed BEFORE the Asset
 /// Holds a reference to the asset and assures the asset stays loaded as long as the AssetRef instance exists
+/// !!! All AssetRefs need to be destructed BEFORE the Asset
 template<typename T>
 struct AssetRef
 {

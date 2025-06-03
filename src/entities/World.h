@@ -25,12 +25,20 @@ struct CollisionListenerID
 
 /// Stores the information for a collision listener. The id has one bit that stores the type (contact begin or contact end)
 /// has_component stores the type information for what component types this listener should be invoked
-struct CollisionListener
+struct BeginContactListener
+{
+	CollisionListenerID id;
+	std::function<bool(entt::registry&, entt::entity)> has_component;
+	std::function<void(entt::registry&, entt::entity, entt::entity, glm::vec2, glm::vec2)> callback;
+};
+
+struct EndContactListener
 {
 	CollisionListenerID id;
 	std::function<bool(entt::registry&, entt::entity)> has_component;
 	std::function<void(entt::registry&, entt::entity, entt::entity)> callback;
 };
+
 
 struct World : NoCopy 
 {
@@ -53,18 +61,10 @@ struct World : NoCopy
 	/// The second callback argument (first entity) always has all template types as components
 	/// If both entities in contact have all component types, the callback is called twice where both entities are the first (entity) argument once.
 	template <typename... Types>
-	CollisionListenerID add_collision_listener(std::function<void(entt::registry&, entt::entity, entt::entity)> listener, CollisionListenerType type)
+	CollisionListenerID add_begin_contact_listener(std::function<void(entt::registry&, entt::entity component_entity, entt::entity other_entity, glm::vec2 pos, glm::vec2 normal)> listener)
 	{
-		CollisionListenerID id = next_listener_ID(type);
-		if (type == CollisionListenerType::OnContactBegin)
-			collision_listeners_begin.emplace_back(
-				id,
-				[](entt::registry& registry, entt::entity entity)
-				{
-					return registry.all_of<Types...>(entity);
-				}, listener);
-		else
-			collision_listeners_end.emplace_back(
+		CollisionListenerID id = next_listener_ID(CollisionListenerType::OnContactBegin);
+		begin_contact_listeners.emplace_back(
 				id,
 				[](entt::registry& registry, entt::entity entity)
 				{
@@ -73,13 +73,26 @@ struct World : NoCopy
 		return id;
 	}
 
+	template <typename... Types>
+	CollisionListenerID add_end_contact_listener(std::function<void(entt::registry&, entt::entity component_entity, entt::entity other_entity)> listener)
+	{
+		CollisionListenerID id = next_listener_ID(CollisionListenerType::OnContactEnd);
+		end_contact_listeners.emplace_back(
+			id,
+			[](entt::registry& registry, entt::entity entity)
+			{
+				return registry.all_of<Types...>(entity);
+			}, listener);
+		return id;
+	}
+
 	/// Removes a registered collision listener
 	void remove_collision_listener(CollisionListenerID id)
 	{
 		if (id.get_type() == CollisionListenerType::OnContactBegin)
-			std::erase_if(this->collision_listeners_begin, [=](CollisionListener& l) { return l.id.value == id.value; });
+			std::erase_if(this->begin_contact_listeners, [=](auto& l) { return l.id.value == id.value; });
 		else
-			std::erase_if(this->collision_listeners_end, [=](CollisionListener& l) { return l.id.value == id.value; });
+			std::erase_if(this->end_contact_listeners, [=](auto& l) { return l.id.value == id.value; });
 	}
 
 	entt::registry registry;
@@ -92,6 +105,6 @@ private:
 	void on_destroy_physics(entt::registry& registry, entt::entity entity);
 
 	std::unique_ptr<b2DebugDraw> physics_debug_draw;
-	std::vector<CollisionListener> collision_listeners_begin;
-	std::vector<CollisionListener> collision_listeners_end;
+	std::vector<BeginContactListener> begin_contact_listeners;
+	std::vector<EndContactListener> end_contact_listeners;
 };

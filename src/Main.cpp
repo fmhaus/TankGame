@@ -9,13 +9,10 @@
 #include "entities/Map.h"
 #include "entities/Projectile.h"
 #include "entities/Particle.h"
-#include "AssetManager.h"
 
 #include <iostream>
 #include <sstream>
 #include <entt/entt.hpp>
-
-const static u32 PIXEL_SCALE = 128;
 
 const static f32 CAMERA_MOVE_SPEED = 1.0;
 const static f32 CAMERA_ZOOM_SPEED = 0.1;
@@ -54,19 +51,8 @@ struct InputButton
     }
 };
 
-void set_text(TextMesh& text, TankDesign design)
-{
-    std::ostringstream oss;
-    oss << "Color:" << (design.color + 1) << " Hull:" << (design.hull + 1) << " Turret:" << (design.turret + 1) << " Tracks:" << (design.tracks + 1);
-    TextBuildSettings settings;
-    settings.horizontal_align = HorizontalAlign::Left;
-    text.load_text(oss.str(), settings);
-}
-
 void open_client()
 {
-    AssetManager asset_manager(PIXEL_SCALE);
-
     WindowCreation window_data{ 1280, 720, "TankGame", FullscreenMode::Windowed, true, true };
     Window window(window_data);
 
@@ -88,36 +74,18 @@ void open_client()
             graphics.update_window_dimensions(width, height);
         });
 
-    auto tank = Tank::create_tank(world.registry, asset_manager.tank_assets, TankDesign{ 2, 0, 0, 0 }, glm::vec2(3.0f, 8.0f), true);
-  
-    std::vector<glm::vec2> polygon;
-    polygon.push_back(glm::vec2(5.0f, 5.0f));
-    polygon.push_back(glm::vec2(5.0f, 7.0f));
-    polygon.push_back(glm::vec2(6.0f, 6.0f));
-    polygon.push_back(glm::vec2(6.0f, 5.0f));
-
-    bool is_space_down = false;
+    auto tank = Tank::create_tank(world.registry, TankDesign{ 2, 0, 0, 0 }, glm::vec2(3.0f, 8.0f), true);
 
     InputButton shoot(GLFW_KEY_SPACE);
-    InputButton next_color(GLFW_KEY_H);
-    InputButton next_hull(GLFW_KEY_J);
-    InputButton next_turret(GLFW_KEY_K);
-    InputButton next_tracks(GLFW_KEY_L);
-    InputButton prev_color(GLFW_KEY_B);
-    InputButton prev_hull(GLFW_KEY_N);
-    InputButton prev_turret(GLFW_KEY_M);
-    InputButton prev_tracks(GLFW_KEY_SEMICOLON);
-    InputButton reload(GLFW_KEY_R);
-
-    TankDesign design(0, 0, 0, 0);
-
-    TextMesh text(asset_manager.font_sans_black);
-    set_text(text, design);
-
 
     ProjectileType projectile_type;
-    projectile_type.sprite_type = ProjectileSpriteType::HeavyShell;
-    projectile_type.max_collisons = 0;
+    projectile_type.sprite_type = ProjectileSpriteType::Laser;
+    projectile_type.velocity = 15.0f;
+    projectile_type.max_collisons = 3;
+    projectile_type.fix_orientation = true;
+    projectile_type.restitution = 1.0f;
+    projectile_type.density = 200;
+    projectile_type.particle_type = 1;
 
     while (!window.poll_events())
     {
@@ -128,82 +96,12 @@ void open_client()
       
         if (shoot.is_released(window))
         {
-            auto [tank_transform, controller] = world.registry.get<Transform,TankPlayerController>(tank);
-            Projectile::create_projectile(world.registry, asset_manager, world.registry.get<Tank>(tank), projectile_type, 10.0f);
-
-            Particle::create(world.registry, asset_manager.particle_explosion[0], world.registry.get<Transform>(tank), 10.0f);
+            world.registry.get<Tank>(tank).shoot_projectile(world.registry, projectile_type);
         }
-
-        if (next_color.is_released(window))
-        {
-            design.color = (design.color + 1) % 4;
-            Tank::update_tank_design(world.registry, tank, design, asset_manager.tank_assets);
-            set_text(text, design);
-        }
-
-        if (next_hull.is_released(window))
-        {
-            design.hull = (design.hull + 1) % 8;
-            Tank::update_tank_design(world.registry, tank, design, asset_manager.tank_assets);
-            set_text(text, design);
-        }
-
-        if (next_turret.is_released(window))
-        {
-            design.turret = (design.turret + 1) % 8;
-            Tank::update_tank_design(world.registry, tank, design, asset_manager.tank_assets);
-            set_text(text, design);
-        }
-
-        if (next_tracks.is_released(window))
-        {
-            design.tracks = (design.tracks + 1) % 4;
-            Tank::update_tank_design(world.registry, tank, design, asset_manager.tank_assets);
-            set_text(text, design);
-        }
-
-        if (prev_color.is_released(window))
-        {
-            design.color = (design.color + 3) % 4;
-            Tank::update_tank_design(world.registry, tank, design, asset_manager.tank_assets);
-            set_text(text, design);
-        }
-
-        if (prev_hull.is_released(window))
-        {
-            design.hull = (design.hull + 7) % 8;
-            Tank::update_tank_design(world.registry, tank, design, asset_manager.tank_assets);
-            set_text(text, design);
-        }
-
-        if (prev_turret.is_released(window))
-        {
-            design.turret = (design.turret + 7) % 8;
-            Tank::update_tank_design(world.registry, tank, design, asset_manager.tank_assets);
-            set_text(text, design);
-        }
-
-        if (prev_tracks.is_released(window))
-        {
-            design.tracks = (design.tracks + 3) % 4;
-            Tank::update_tank_design(world.registry, tank, design, asset_manager.tank_assets);
-            set_text(text, design);
-        }
-
-        if (reload.is_released(window))
-        {
-            world.registry.remove<TankRenderable>(tank);
-            world.registry.emplace<TankRenderable>(tank, asset_manager.tank_assets, design);
-        }
-
 
         world.update((f32)window.get_last_frame_time());
 
         world.render(graphics);
-
-        TextStyleSettings settings;
-        settings.thickness = 0.495f;
-        graphics.draw_text(text, 50, 50, settings);
 
         std::ostringstream oss;
         oss << "TankGame " << (1.0 / window.get_last_frame_time());

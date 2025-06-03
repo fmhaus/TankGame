@@ -1,8 +1,11 @@
 #pragma once
 
+#include "Projectile.h"
+
 #include "engine/Graphics.h"
 #include "engine/Window.h"
 #include "engine/Asset.h"
+#include "AssetManager.h"
 
 #include "entt/entt.hpp"
 
@@ -26,18 +29,6 @@ struct TurretData
 	static void load_from_file(std::unique_ptr<TurretData>& data_ptr, const char* location, u32 pixel_scale);
 };
 
-struct TankAssets : NoCopy
-{
-	TankAssets(u32 pixel_scale);
-
-	Asset<Texture> hull_textures[4][8];
-	Asset<Texture> turret_textures[4][8];
-	Asset<Texture> track_textures[4][2];
-
-	Asset<HullData> hull_data[8];
-	Asset<TurretData> turret_data[8];
-};
-
 struct TankDesign
 {
 	u8 color;
@@ -48,9 +39,10 @@ struct TankDesign
 
 struct Tank
 {
-	Tank(u32 id, entt::entity entity, const TankDesign& design, TankAssets& assets);
+	Tank(u32 id, entt::entity entity, const TankDesign& design);
 
 	glm::vec2 get_shoot_point(entt::registry& registry);
+	entt::entity shoot_projectile(entt::registry& registry, const ProjectileType& type);
 
 	u32 id;
 	entt::entity entity;
@@ -62,16 +54,15 @@ struct Tank
 	// team data, stats, weapon data, name, ...
 
 
-	static entt::entity create_tank(entt::registry& registry, TankAssets& assets, const TankDesign& design, glm::vec2 pos, bool player_control);
-
-	static void update_tank_design(entt::registry& registry, entt::entity tank_entity, const TankDesign& new_design, TankAssets& assets);
+	static entt::entity create_tank(entt::registry& registry, const TankDesign& design, glm::vec2 pos, bool player_control);
+	static void update_tank_design(entt::registry& registry, entt::entity tank_entity, const TankDesign& new_design);
 
 	static f32 get_scale();
 };
 
 struct TankRenderable 
 {
-	TankRenderable(TankAssets& assets, const TankDesign& design);
+	TankRenderable(const TankDesign& design);
 
 	AssetRef<Texture> hull_texture;
 	AssetRef<Texture> turret_texture;
