@@ -95,3 +95,9 @@ struct Rect
 {
     f32 x, y, width, height;
 };
+
+template<typename T, usz N>
+using Array = std::array<T, N>;
+
+template<typename T, usz N, usz M>
+using Array2D = std::array<std::array<T, M>, N>;

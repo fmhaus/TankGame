@@ -33,24 +33,6 @@ static void player_control_camera(Window& window, Camera& camera)
     camera.update_matrix();
 }
 
-struct ReleaseKey
-{
-    InputKey key;
-    bool state = false;
-
-    bool is_released(Window& window)
-    {
-        bool now = window.is_key_pressed(key);
-        if (state && !now)
-        {
-            state = now;
-            return true;
-        }
-        state = now;
-        return false;
-    }
-};
-
 void open_client()
 {
     WindowCreation window_data{ 1280, 720, "TankGame", FullscreenMode::Windowed, true, true };
@@ -60,7 +42,7 @@ void open_client()
 
     Graphics graphics(window.get_width(), window.get_height(), PIXEL_SCALE);
 
-    entt::entity map_entity = Map::create_map_entity(world.registry, RESOURCES_PATH "maps/map1.tmx", PIXEL_SCALE);
+    auto map_entity = Map::create_map_entity(world.registry, RESOURCES_PATH "maps/map1.tmx", PIXEL_SCALE);
     Map::set_full_screen_camera(world.registry, map_entity, graphics.camera);
     graphics.camera.update_matrix();
 
@@ -75,8 +57,6 @@ void open_client()
         });
 
     auto tank_entity = Tank::create_tank(world.registry, TankDesign{ 2, 0, 0, 0 }, glm::vec2(3.0f, 8.0f), true);
-
-    ReleaseKey shoot(KEY_SPACE);
 
     ProjectileType projectile_type;
     projectile_type.sprite_type = ProjectileSpriteType::Laser;
@@ -101,6 +81,8 @@ void open_client()
     projectile_type.allow_projectile_collision = true;
 
     world.registry.get<TankPlayerController>(tank_entity).projectile_type = projectile_type;
+
+    AssetManager::get_instance().preload_assets();
 
     while (!window.poll_events())
     {

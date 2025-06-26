@@ -12,7 +12,7 @@
             "ctestCommandArgs": "",
             "variables": [
                 {
-                    "name": "CMAKE_INSTALL_PREFIX",
+                    "name": "debug",
                     "value": "D:/workspace/C++/TankGame/out/install/x64-Debug",
                     "type": "PATH"
                 }

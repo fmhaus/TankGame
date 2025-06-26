@@ -16,20 +16,24 @@ struct AssetManager : NoCopy
 
 	AssetManager();
 
+	void preload_assets();
+
 	Asset<Font> font_sans_black;
-	Asset<Texture> projectile_textures[8];
+	Array<Asset<Texture>, 8> projectile_textures;
 
-	Asset<Texture> hull_textures[4][8];
-	Asset<Texture> turret_textures[4][8];
-	Asset<Texture> track_textures[4][2];
+	Array2D<Asset<Texture>, 4, 8> hull_textures;
+	Array2D<Asset<Texture>, 4, 8> turret_textures;
+	Array2D<Asset<Texture>, 4, 2> track_textures;
 
-	Asset<HullData> hull_data[8];
-	Asset<TurretData> turret_data[8];
+	Array<Asset<HullData>, 8> hull_data;
+	Array<Asset<TurretData>, 8> turret_data;
 
-	Asset<ParticleTextures> particle_exhaust[2];
-	Asset<ParticleTextures> particle_explosion[4];
+	Array<Asset<ParticleTextures>, 2> particle_exhaust;
+	Array<Asset<ParticleTextures>, 4> particle_explosion;
 	Asset<ParticleTextures> particle_flame;
-	Asset<ParticleTextures> particle_flash[2];
-	Asset<ParticleTextures> particle_impact[2];
+	Array<Asset<ParticleTextures>, 2> particle_flash;
+	Array<Asset<ParticleTextures>, 2> particle_impact;
 	Asset<ParticleTextures> particle_smoke;
+
+	AssetPreloader preloader;
 };

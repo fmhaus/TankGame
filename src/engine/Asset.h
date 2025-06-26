@@ -5,6 +5,8 @@
 #include <string>
 #include <functional>
 #include <memory>
+#include <array>
+#include <any>
 
 // TODO: implement functionality for async loading
 
@@ -76,6 +78,7 @@ struct AssetRef
 
 
 	friend Asset<T>;
+	friend struct AssetPreloader;
 
 private:
 
@@ -143,4 +146,38 @@ private:
 	std::function<void(std::unique_ptr<T>& data_ptr, const std::string& location)> loader_fn;
 	std::unique_ptr<T> data;
 	u32 ref_count;
+};
+
+struct AssetPreloader : NoCopy
+{
+	template<typename T>
+	void preload(Asset<T>& asset)
+	{
+		loaded_assets.push_back(asset.loaded());
+	}
+
+	template <typename T, usz N>
+	void preload_array(Array<Asset<T>, N>& assets)
+	{
+		for (auto& asset : assets)
+			preload(asset);
+	}
+
+	template<typename T, usz N, usz M>
+	void preload_array_2D(Array2D<Asset<T>, N, M>& assets) {
+		for (auto& row : assets) {
+			for (auto& asset : row) {
+				loaded_assets.push_back(asset.loaded());
+			}
+		}
+	}
+
+
+	void clear()
+	{
+		loaded_assets.clear();
+	}
+
+private:
+	std::vector<std::any> loaded_assets;
 };

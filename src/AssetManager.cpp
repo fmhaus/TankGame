@@ -5,6 +5,9 @@
 #include "entities/Tank.h"
 #include "entities/Particle.h"
 
+static const char* PROJECTILE_NAMES[8] = { "Grenade_Shell.png", "Heavy_Shell.png", "Laser.png", "Light_Shell.png",
+		"Medium_Shell.png", "Plasma.png", "Shotgun_Shells.png", "Sniper_Shell.png" };
+
 template <typename T>
 void load_with_location(std::unique_ptr<T>& data_ptr, const std::string& location)
 {
@@ -20,9 +23,6 @@ AssetManager& AssetManager::get_instance()
 AssetManager::AssetManager()
 {
 	font_sans_black.set(std::string(RESOURCES_PATH "font/SansBlack.ttf"), load_with_location<Font>);
-
-	static const char* PROJECTILE_NAMES[8] = { "Grenade_Shell.png", "Heavy_Shell.png", "Laser.png", "Light_Shell.png",
-		"Medium_Shell.png", "Plasma.png", "Shotgun_Shells.png", "Sniper_Shell.png"};
 
 	for (u32 var1 = 0; var1 < 4; var1++)
 	{
@@ -51,7 +51,7 @@ AssetManager::AssetManager()
 			});
 	}
 
-	for (u32 i = 0; i < 8; i++)
+	for (u32 i = 0; i < projectile_textures.size(); i++)
 	{
 		projectile_textures[i].set(std::string(RESOURCES_PATH "images/projectile/") + PROJECTILE_NAMES[i], load_with_location<Texture>);
 	}
@@ -68,4 +68,20 @@ AssetManager::AssetManager()
 	particle_impact[0].set(RESOURCES_PATH "images/particle/Shot_Impact_1", Particle::load_textures);
 	particle_impact[1].set(RESOURCES_PATH "images/particle/Shot_Impact_2", Particle::load_textures);
 	particle_smoke.set(RESOURCES_PATH "images/particle/Smoke", Particle::load_textures);
+}
+
+void AssetManager::preload_assets()
+{
+	preloader.clear();
+
+	// TODO: only load assets that are needed
+	preloader.preload(font_sans_black);
+	preloader.preload_array(projectile_textures);
+
+	preloader.preload_array(particle_exhaust);
+	preloader.preload_array(particle_explosion);
+	preloader.preload(particle_flame);
+	preloader.preload_array(particle_flash);
+	preloader.preload_array(particle_impact);
+	preloader.preload(particle_smoke);
 }
