@@ -65,8 +65,7 @@ struct Map : NoCopy
 {
 	Map(const char* location, u32 pixel_scale);
 
-	void set_full_screen_camera(Camera& camera);
-
+	static void set_full_screen_camera(entt::registry& registry, entt::entity entity, Camera& camera);
 	static entt::entity create_map_entity(entt::registry& registry, const char* map_location, u32 pixel_scale);
 	static void create_map_renderable(entt::registry& registry, entt::entity entity, Tileset& tileset);
 	static void create_map_physics(entt::registry& registry, entt::entity entity, Tileset& tileset);

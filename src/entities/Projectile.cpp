@@ -1,5 +1,6 @@
 #include "Projectile.h"
 
+#include "CollisionCategory.h"
 #include "Particle.h"
 #include "AssetManager.h"
 #include "engine/util/MathUtil.h"
@@ -40,6 +41,9 @@ entt::entity Projectile::create_projectile(entt::registry& registry, entt::entit
 	shape_def.material.friction = 0.3f;
 	shape_def.material.restitution = type.restitution;
 	shape_def.enableContactEvents = true;
+	shape_def.filter.categoryBits = CATEGORY_PROJECTILE;
+	if (!type.allow_projectile_collision)
+		shape_def.filter.maskBits &= ~CATEGORY_PROJECTILE;
 
 	b2Polygon hitbox = b2MakeBox(PROJECTILE_HITBOXES[type_index].x * type.scale * 0.5f, PROJECTILE_HITBOXES[type_index].y * type.scale * 0.5f);
 	b2ShapeCastInput input = { 0 };
@@ -83,6 +87,7 @@ void Projectile::update_projectiles(entt::registry& registry)
 		if (projectile.fix_velocity)
 		{
 			velocity.linear = glm::normalize(velocity.linear) * projectile.initial_velocity;
+			velocity.update_physics(registry, entity);
 		}
 	}
 }

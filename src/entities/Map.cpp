@@ -1,4 +1,6 @@
 #include "Map.h"
+
+#include "CollisionCategory.h"
 #include "engine/util/MathUtil.h"
 
 #include "pugixml.hpp"
@@ -118,14 +120,15 @@ Map::Map(const char* location, u32 pixel_scale)
 	this->world_height = v_tiles * this->tile_size;
 }
 
-void Map::set_full_screen_camera(Camera& camera)
+void Map::set_full_screen_camera(entt::registry& registry, entt::entity entity, Camera& camera)
 {
-	camera.center = glm::vec2(world_width / 2.0f, world_height / 2.0f);
-	f32 map_aspect_ratio = world_width / world_height;
-	if (map_aspect_ratio < camera.aspect_ratio)
-		camera.set_vertical_scope(world_height);
+	Map& map = registry.get<Map>(entity);
+	camera.center = glm::vec2(map.world_width / 2.0f, map.world_height / 2.0f);
+	f32 map_aspect_ratio = map.world_width / map.world_height;
+	if (map_aspect_ratio < camera.window_width / camera.window_height)
+		camera.set_vertical_scope(map.world_height);
 	else
-		camera.h_scope = world_width;
+		camera.h_scope = map.world_width;
 	camera.update_matrix();
 }
 
@@ -162,6 +165,7 @@ void add_collision_objects(Physics& physics, TilesetTile& tile, f32 x, f32 y, bo
 				polygon = b2MakeOffsetBox(box.width * 0.5f, box.height * 0.5f, b2Vec2(cx, cy), b2MakeRot(rot));
 			}
 			b2ShapeDef shape_def = b2DefaultShapeDef();
+			shape_def.filter.categoryBits = CATEGORY_MAP;
 			physics.create_polygon_shape(shape_def, polygon);
 		}
 	}
@@ -181,6 +185,7 @@ void Map::create_map_physics(entt::registry& registry, entt::entity entity, Tile
 	b2Polygon p3 = b2MakeOffsetBox(HALF_BORDER_WIDTH, half_height, b2Vec2(0.0f, half_height), b2Rot_identity);
 	b2Polygon p4 = b2MakeOffsetBox(HALF_BORDER_WIDTH, half_height, b2Vec2(map.world_width, half_height), b2Rot_identity);
 	b2ShapeDef shape_def = b2DefaultShapeDef();
+	shape_def.filter.categoryBits = CATEGORY_MAP;
 
 	physics.create_polygon_shape(shape_def, p1);
 	physics.create_polygon_shape(shape_def, p2);

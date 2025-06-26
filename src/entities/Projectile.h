@@ -28,6 +28,7 @@ struct ProjectileType
 	u8 particle_type = 0;
 	bool fix_orientation = false;
 	bool fix_velocity = true;
+	bool allow_projectile_collision = true;
 };
 
 struct Projectile
