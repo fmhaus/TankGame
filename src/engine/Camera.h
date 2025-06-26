@@ -6,9 +6,9 @@
 
 struct Camera
 {
-	Camera(f32 aspect_ratio);
+	Camera(f32 window_width, f32 window_height);
 
-	/// Calculates the transform matrix; Need to call this every time after changing center/h_scope/aspect_ratio
+	/// Calculates the transform matrix; Need to call this every time after changing center/h_scope/width/height
 	void update_matrix();
 
 	/// Sets the camera to a vertical camera scope (height)
@@ -19,12 +19,18 @@ struct Camera
 	/// Gets the rectangle of the camera bounds in world space
 	Rect get_bounding_rect();
 
+	/// Translates world coordinates to screen coordinates
+	glm::vec2 to_screen_space(glm::vec2 world) const;
+	/// Translates screen coordinates to world coordinates
+	glm::vec2 to_world_space(glm::vec2 screen) const;
+
 	/// The center of the camera in world space
 	glm::vec2 center;
 	/// The horizontal camera scope (width) in world space
 	f32 h_scope;
-	/// window_width / window_height
-	f32 aspect_ratio;
+
+	f32 window_width;
+	f32 window_height;
 
 	glm::mat3 transform;
 };

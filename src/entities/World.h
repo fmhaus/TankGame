@@ -15,7 +15,6 @@ enum class CollisionListenerType : u32
 };
 
 /// Used to track registered (collision) listeners to a World.
-/// The type (contact begin or contact end) is stored in a single bit
 struct CollisionListenerID
 {
 	CollisionListenerType get_type();
@@ -44,6 +43,9 @@ struct World : NoCopy
 {
 	World();
 	~World();
+
+	/// Handles player input
+	void handle_inputs(f32 delta_time, const Camera& camera);
 
 	/// Updates the world with the delta time step (last frame time)
 	void update(f32 delta_time);

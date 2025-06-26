@@ -1,5 +1,7 @@
-#include "glad/glad.h"
 #include "Window.h"
+
+#include "glad/glad.h"
+#include "GLFW/glfw3.h"
 
 #include <iostream>
 
@@ -62,11 +64,27 @@ static void APIENTRY gl_debug_callback(GLenum source,
     }
 }
 
+static void window_size_callback(GLFWwindow* window, s32 width, s32 height)
+{
+    glViewport(0, 0, width, height);
+    WindowUserData* user_data = static_cast<WindowUserData*>(glfwGetWindowUserPointer(window));
+    if (user_data->on_resize)
+        user_data->on_resize(width, height);
+}
+
 static void cursor_pos_callback(GLFWwindow* window, f64 x, f64 y)
 {
     WindowUserData* input_data = static_cast<WindowUserData*>(glfwGetWindowUserPointer(window));
     input_data->mouse_delta.x += x;
     input_data->mouse_delta.y += y;
+
+    for (InputUser* input_user : input_data->input_users)
+    {
+        if (input_user->listener_enabled && input_user->mouse_move_listener)
+        {
+            (*input_user->mouse_move_listener)((f32) x, (f32) y);
+        }
+    }
 }
 
 static void mouse_wheel_callback(GLFWwindow* window, f64 x, f64 y)
@@ -74,14 +92,38 @@ static void mouse_wheel_callback(GLFWwindow* window, f64 x, f64 y)
     WindowUserData* input_data = static_cast<WindowUserData*>(glfwGetWindowUserPointer(window));
     input_data->wheel_delta.x += x;
     input_data->wheel_delta.y += y;
+
+    for (InputUser* input_user : input_data->input_users)
+    {
+        if (input_user->listener_enabled && input_user->wheel_move_listener)
+        {
+            (*input_user->wheel_move_listener)((f32) x, (f32) y);
+        }
+    }
 }
 
-static void window_size_callback(GLFWwindow* window, s32 width, s32 height)
+static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    glViewport(0, 0, width, height);
     WindowUserData* user_data = static_cast<WindowUserData*>(glfwGetWindowUserPointer(window));
-    if (user_data->on_resize)
-        user_data->on_resize(width, height);
+    for (InputUser* input_user : user_data->input_users)
+    {
+        if (input_user->listener_enabled && input_user->key_listener)
+        {
+            (*input_user->key_listener)(static_cast<InputKey>(key), static_cast<InputType>(action));
+        }
+    }
+}
+
+static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    WindowUserData* user_data = static_cast<WindowUserData*>(glfwGetWindowUserPointer(window));
+    for (InputUser* input_user : user_data->input_users)
+    {
+        if (input_user->listener_enabled && input_user->key_listener)
+        {
+            (*input_user->button_listener)(static_cast<InputButton>(button), static_cast<InputType>(action));
+        }
+    }
 }
 
 Window::Window(const WindowCreation& creation_data)
@@ -135,6 +177,8 @@ Window::Window(const WindowCreation& creation_data)
 
     glfwSetCursorPosCallback(handle, cursor_pos_callback);
     glfwSetScrollCallback(handle, mouse_wheel_callback);
+    glfwSetKeyCallback(handle, key_callback);
+	glfwSetMouseButtonCallback(handle, mouse_button_callback);
     glfwSetWindowSizeCallback(handle, window_size_callback);
 
     glViewport(0, 0, width, height);
@@ -147,6 +191,7 @@ Window::Window(const WindowCreation& creation_data)
 
 Window::~Window()
 {
+	assert(user_data->input_users.empty() && "Window destroyed while input users are still active!");
     glfwDestroyWindow(handle);
     glfwTerminate();
 }
@@ -199,24 +244,29 @@ glm::vec2 Window::get_cursor_pos() const
     return glm::vec2((f32) x, (f32) y);
 }
 
-const glm::vec2& Window::get_cursor_delta() const
+glm::vec2 Window::get_cursor_delta() const
 {
     return user_data->mouse_delta;
 }
 
-const glm::vec2& Window::get_wheel_delta() const
+glm::vec2 Window::get_wheel_delta() const
 {
     return user_data->wheel_delta;
 }
 
-bool Window::is_key_pressed(GLFWKey key) const
+bool Window::is_key_pressed(InputKey key) const
 {
     return glfwGetKey(handle, key);
 }
 
-bool Window::is_mouse_button_pressed(GLFWButton button) const
+bool Window::is_button_pressed(InputButton button) const
 {
     return glfwGetMouseButton(handle, button);
+}
+
+InputUser Window::create_input_user()
+{
+    return InputUser(this);
 }
 
 void Window::set_on_resize(std::function<void(u32, u32)> on_resize)
@@ -224,3 +274,34 @@ void Window::set_on_resize(std::function<void(u32, u32)> on_resize)
     this->user_data->on_resize = on_resize;
 }
 
+void Window::add_input_user(InputUser* user)
+{
+    user_data->input_users.push_back(user);
+}
+
+void Window::remove_input_user(InputUser* user)
+{
+    auto it = std::remove(user_data->input_users.begin(), user_data->input_users.end(), user);
+    if (it != user_data->input_users.end())
+    {
+        user_data->input_users.erase(it, user_data->input_users.end());
+	}
+}
+
+std::unique_ptr<Window> Window::s_instance = nullptr;
+
+Window& Window::create_window(const WindowCreation& creation_data)
+{
+    s_instance = std::make_unique<Window>(creation_data);
+    return *s_instance;
+}
+
+Window& Window::get_instance()
+{
+    return *s_instance;
+}
+
+void Window::destroy_window()
+{
+    s_instance.reset();
+}

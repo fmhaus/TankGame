@@ -65,11 +65,6 @@ struct Graphics {
 
 	ImageTransform create_transform() { return ImageTransform(pixel_scale); }
 
-	/// Translates world coordinates to screen coordinates
-	glm::vec2 to_screen_space(glm::vec2 world) const;
-	/// Translates screen coordinates to world coordinates
-	glm::vec2 to_world_space(glm::vec2 screen) const;
-
 	inline void draw_image(const Texture& texture, const ImageTransform& transform, f32 opacity) 
 	{ 
 		image_renderer.render_image(quad_mesh, texture, camera, (f32)pixel_scale, transform, opacity);

@@ -26,6 +26,11 @@ World::~World()
 	b2DestroyWorld(physics_world);
 }
 
+void World::handle_inputs(f32 delta_time, const Camera& camera)
+{
+	TankPlayerController::update_tank(registry, camera, delta_time);
+}
+
 void World::update(f32 delta_time)
 {
 	b2World_Step(physics_world, delta_time, 4);

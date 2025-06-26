@@ -3,8 +3,9 @@
 #include "Projectile.h"
 
 #include "engine/Graphics.h"
-#include "engine/Window.h"
 #include "engine/Asset.h"
+#include "engine/Input.h"
+
 #include "AssetManager.h"
 
 #include "entt/entt.hpp"
@@ -89,7 +90,10 @@ struct TankPlayerController
 	TankPlayerController(const TankMovementSettings& settings = { 2.0f, 2.0f, 8.0f, glm::radians(80.0f), glm::radians(200.0f), 5.0f });
 
 	TankMovementSettings movement_settings;
+	ProjectileType projectile_type;
 	f32 rel_turret_rotation;
+	InputUser input_user;
+	KeyState shoot_key_state;
 
-	static void update_tank(entt::registry& registry, const Window& player_input, const Graphics& graphics, f32 frame_time);
+	static void update_tank(entt::registry& registry, const Camera& camera, f32 frame_time);
 };

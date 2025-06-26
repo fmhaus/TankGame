@@ -92,7 +92,7 @@ void ImageRenderer::render_image(const Mesh& quad_mesh, const Texture& texture, 
 }
 
 Graphics::Graphics(u32 width, u32 height, u32 pixel_scale)
-	: camera(width / (f32)height),
+	: camera((f32) width, (f32) height),
 	f_width((f32) width),
 	f_height((f32) height),
 	pixel_scale(pixel_scale),
@@ -110,22 +110,9 @@ void Graphics::update_window_dimensions(u32 width, u32 height)
 {
 	this->f_width = (f32)width;
 	this->f_height = (f32)height;
-	this->camera.aspect_ratio = this->f_width / this->f_height;
+	this->camera.window_width = this->f_width;
+	this->camera.window_height = this->f_height;
 	this->camera.update_matrix();
-}
-
-glm::vec2 Graphics::to_screen_space(glm::vec2 world) const
-{
-	glm::vec3 world_space = glm::vec3(world.x, world.y, 1.0f);
-	glm::vec3 clip_space = camera.transform * world_space;
-	return { (clip_space.x + 1.0f) * 0.5f * f_width, (clip_space.y - 1.0f) * -0.5f * f_height };
-}
-
-glm::vec2 Graphics::to_world_space(glm::vec2 screen) const
-{
-	glm::vec3 clip_space = glm::vec3(screen.x * 2.0 / f_width - 1.0f, screen.y * -2.0 / f_height + 1.0f, 1.0);
-	glm::vec3 world_space = glm::inverse(camera.transform) * clip_space;
-	return { world_space.x, world_space.y };
 }
 
 void send_vertex(Camera& camera, f32 x, f32 y)

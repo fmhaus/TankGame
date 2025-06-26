@@ -1,12 +1,15 @@
 #include "Tank.h"
 
+#include "CollisionCategory.h"
 #include "World.h"
 #include "Components.h"
 #include "Projectile.h"
 #include "Particle.h"
 #include "AssetManager.h"
+
 #include "engine/util/MathUtil.h"
 #include "engine/util/StringUtil.h"
+#include "engine/Window.h"
 
 #include <cmath>
 #include <fstream>
@@ -115,7 +118,7 @@ entt::entity Tank::create_tank(entt::registry& registry, const TankDesign& desig
 	b2ShapeDef shape_def = b2DefaultShapeDef();
 	shape_def.density = 868.0;
 	shape_def.material.friction = 0.3f;
-	shape_def.filter.groupIndex = -registry.get<Tank>(entity).id;
+	shape_def.filter.categoryBits = CATEGORY_TANK;
 	registry.emplace<Physics>(entity, true).create_box_shape(shape_def, 1.32f * TANK_SCALE, 1.88f * TANK_SCALE);
 	if (player_control)
 		registry.emplace<TankPlayerController>(entity, TankMovementSettings{ 2.0f, 2.0f, 8.0f, glm::radians(80.0f), glm::radians(200.0f), 5.0f });
@@ -256,14 +259,17 @@ void TankRenderable::render_tanks(entt::registry& registry, Graphics& graphics)
 	}
 }
 
+#include <iostream>
 TankPlayerController::TankPlayerController(const TankMovementSettings& settings)
 	: movement_settings(settings),
-	rel_turret_rotation(0.0f)
+	rel_turret_rotation(0.0f),
+	input_user(Window::get_instance().create_input_user()),
+	shoot_key_state(Window::get_instance(), KEY_SPACE)
 {
+	
 }
 
-
-void TankPlayerController::update_tank(entt::registry& registry, const Window& player_input, const Graphics& graphics, f32 frame_time)
+void TankPlayerController::update_tank(entt::registry& registry, const Camera& camera, f32 frame_time)
 {
 	for (auto [entity, controller, physics, tank] : registry.view<TankPlayerController, Physics, Tank>().each())
 	{
@@ -281,10 +287,11 @@ void TankPlayerController::update_tank(entt::registry& registry, const Window& p
 
 		f32 turning_speed = b2Body_GetAngularVelocity(physics.body);
 
-		bool input_forwards = player_input.is_key_pressed(GLFW_KEY_W);
-		bool input_backwards = player_input.is_key_pressed(GLFW_KEY_S);
-		bool input_left = player_input.is_key_pressed(GLFW_KEY_A);
-		bool input_right = player_input.is_key_pressed(GLFW_KEY_D);
+		InputUser& input_user = controller.input_user;
+		bool input_forwards = input_user.is_key_pressed(KEY_W);
+		bool input_backwards = input_user.is_key_pressed(KEY_S);
+		bool input_left = input_user.is_key_pressed(KEY_A);
+		bool input_right = input_user.is_key_pressed(KEY_D);
 
 		// forwards and backwards
 		if (input_forwards && !input_backwards)
@@ -354,7 +361,7 @@ void TankPlayerController::update_tank(entt::registry& registry, const Window& p
 			b2Body_ApplyForceToCenter(physics.body, b2Vec2(force_vector.x, force_vector.y), true);
 		}
 
-		glm::vec2 mouse_world = graphics.to_world_space(player_input.get_cursor_pos());
+		glm::vec2 mouse_world = camera.to_world_space(input_user.get_cursor_pos());
 		glm::vec2 to_mouse = mouse_world - glm::vec2(b2_pos.x, b2_pos.y);
 		f32 angle_target = std::atan2(to_mouse.x, -to_mouse.y);
 		f32 tank_rot = b2Rot_GetAngle(b2_rot);
@@ -365,5 +372,13 @@ void TankPlayerController::update_tank(entt::registry& registry, const Window& p
 
 		if (registry.all_of<TankRenderable>(entity))
 			registry.get<TankRenderable>(entity).turret_rotation = tank_rot + controller.rel_turret_rotation;
+
+		controller.shoot_key_state.update_state();
+
+		if (controller.shoot_key_state.is_pressed())
+		{
+			Tank& tank = registry.get<Tank>(entity);
+			tank.shoot_projectile(registry, controller.projectile_type);
+		}
 	}
 }
