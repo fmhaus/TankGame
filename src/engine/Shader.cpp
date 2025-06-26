@@ -5,22 +5,37 @@
 #include <fstream>
 #include <iostream>
 
-void load_uniform(s32 location, f32 value)
+void load_uniform_impl(s32 location, f32 value)
 {
 	glUniform1f(location, value);
 }
 
-void load_uniform(s32 location, s32 value)
+void load_uniform_impl(s32 location, s32 value)
 {
 	glUniform1i(location, value);
 }
 
-void load_uniform(s32 location, const glm::mat3x3& value)
+void load_uniform_impl(s32 location, const glm::mat3x3& value)
 {
 	glUniformMatrix3fv(location, 1, GL_FALSE, (GLfloat*)&value);
 }
 
-void load_uniform(s32 location, const glm::vec4& value)
+void load_uniform_impl(s32 location, const glm::mat4x4& value)
+{
+	glUniformMatrix4fv(location, 1, GL_FALSE, (GLfloat*)&value);
+}
+
+void load_uniform_impl(s32 location, const glm::vec2& value)
+{
+	glUniform2f(location, value.x, value.y);
+}
+
+void load_uniform_impl(s32 location, const glm::vec3& value)
+{
+	glUniform3f(location, value.x, value.y, value.z);
+}
+
+void load_uniform_impl(s32 location, const glm::vec4& value)
 {
 	glUniform4f(location, value.x, value.y, value.z, value.w);
 }

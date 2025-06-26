@@ -72,6 +72,23 @@ struct Color
     {
         return glm::vec4(r, g, b, a);
     }
+
+	static Color Red() { return { 1.0f, 0.0f, 0.0f, 1.0f }; }
+	static Color Green() { return { 0.0f, 1.0f, 0.0f, 1.0f }; }
+	static Color Blue() { return { 0.0f, 0.0f, 1.0f, 1.0f }; }
+	static Color Black() { return { 0.0f, 0.0f, 0.0f, 1.0f }; }
+	static Color White() { return { 1.0f, 1.0f, 1.0f, 1.0f }; }
+	static Color Transparent() { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
+
+    static Color from_hex(u32 hex)
+    {
+        return {
+            ((hex >> 16) & 0xFF) / 255.0f,
+            ((hex >> 8) & 0xFF) / 255.0f,
+            (hex & 0xFF) / 255.0f,
+            ((hex >> 24) & 0xFF) / 255.0f
+        };
+	}
 };
 
 struct Rect

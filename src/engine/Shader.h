@@ -5,10 +5,13 @@
 #include <glm/glm.hpp>
 
 // TODO: implement more as needed
-void load_uniform(s32 location, f32 value);
-void load_uniform(s32 location, s32 value);
-void load_uniform(s32 location, const glm::mat3x3& value);
-void load_uniform(s32 location, const glm::vec4& value);
+void load_uniform_impl(s32 location, f32 value);
+void load_uniform_impl(s32 location, s32 value);
+void load_uniform_impl(s32 location, const glm::mat3x3& value);
+void load_uniform_impl(s32 location, const glm::mat4x4& value);
+void load_uniform_impl(s32 location, const glm::vec2& value);
+void load_uniform_impl(s32 location, const glm::vec3& value);
+void load_uniform_impl(s32 location, const glm::vec4& value);
 
 template <typename T>
 struct Uniform
@@ -18,7 +21,7 @@ struct Uniform
 	inline void load(T value)
 	{
 		if (location != -1)
-			load_uniform(location, value);
+			load_uniform_impl(location, value);
 	}
 
 private:
